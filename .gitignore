@@ -1,0 +1,47 @@
+# Root .gitignore for cs336-spring26.
+# Each assignment folder also has its own .gitignore (Python/venv/cache rules).
+
+# ---------- Large data ----------
+# Raw datasets (TinyStories, OpenWebText) — re-download per assignment README
+**/data/*.txt
+**/data/*.gz
+# Tokenized datasets
+**/data/*.bin
+*.npy
+*.memmap
+
+# ---------- Model checkpoints / weights ----------
+# (training logs inside checkpoints/ are kept)
+**/checkpoints/**/*.pt
+**/checkpoints/**/*.pth
+*.ckpt
+*.safetensors
+
+# ---------- Profiling / experiment outputs ----------
+*.nsys-rep
+*.qdrep
+*.sqlite
+*memory_snapshot*.pickle
+wandb/
+runs/
+outputs/
+
+# ---------- Archives / submissions ----------
+*.zip
+*.tar
+*.tar.gz
+
+# ---------- Environments / caches ----------
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# ---------- OS / editor ----------
+.DS_Store
+.vscode/
+.idea/
