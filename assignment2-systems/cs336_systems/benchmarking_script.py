@@ -25,6 +25,7 @@ class BenchmarkConfig:
     mode: str = "forward"  # "forward" | "forward_backward" | "train"
     device: torch.device = DEFAULT_DEVICE
     mixed_precision: bool = False
+    memory_profiling: bool = False
 
 
 def parse_args() -> BenchmarkConfig:
@@ -46,6 +47,7 @@ def parse_args() -> BenchmarkConfig:
     # type=torch.device turns the CLI string ("cuda", "cuda:0", "cpu") into a torch.device
     parser.add_argument("--device", type=torch.device, default=DEFAULT_DEVICE)
     parser.add_argument("--mixed_precision", action="store_true")
+    parser.add_argument("--memory_profiling", action="store_true")
 
     return BenchmarkConfig(**vars(parser.parse_args()))
 
@@ -113,7 +115,18 @@ def run_benchmark(cfg: BenchmarkConfig) -> list[float]:
     for _ in range(cfg.warmup_steps):
         run_step(cfg, model, tokens, targets, optimizer)
     sync(cfg)
-    # Start the timer
+    # memory profiling
+    if cfg.memory_profiling:
+        torch.cuda.memory._record_memory_history(max_entries=1000000)
+        run_step(cfg, model, tokens, targets, optimizer)
+        sync(cfg)
+        print(f"Peak memory: {torch.cuda.max_memory_allocated() / 1024**2:.1f} MiB")
+        tag = f"mode-{cfg.mode}_ctx-{cfg.context_length}_mp-{int(cfg.mixed_precision)}"
+        torch.cuda.memory._dump_snapshot(f"memory_snapshot_{tag}.pickle")
+        torch.cuda.memory._record_memory_history(enabled=None)
+        return []
+
+    # start the timer
     times = []
     for _ in range(cfg.measure_steps):
         start = timeit.default_timer()
@@ -128,4 +141,5 @@ def run_benchmark(cfg: BenchmarkConfig) -> list[float]:
 if __name__ == "__main__":
     cfg = parse_args()
     times = run_benchmark(cfg)
-    print(f"{cfg.mode} mode (mixed_precision={cfg.mixed_precision}) averaged in {cfg.measure_steps} steps: {np.mean(times):.6f} ± {np.std(times):.6f} s")
+    if times:
+        print(f"{cfg.mode} mode (mixed_precision={cfg.mixed_precision}) averaged in {cfg.measure_steps} steps: {np.mean(times):.6f} ± {np.std(times):.6f} s")
